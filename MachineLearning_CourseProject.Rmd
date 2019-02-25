@@ -1,0 +1,172 @@
+---
+title: "MachineLearning_CourseProject"
+author: "Peter EerNisse"
+date: "February 24, 2019"
+output: 
+
+  html_document:
+          code_folding: hide
+          toc: true
+          toc_float: 
+                collapsed: true
+                smooth_scroll: true
+                toc_depth: 3
+          number_sections: false
+          
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE,error = FALSE,include = TRUE)
+```
+
+# Assignment
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har. If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment.
+
+```{r setup and import, echo = FALSE, include = FALSE}
+
+library(caret)
+library(tidyverse)
+
+#Data download
+# download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv',destfile = './Data/pml-training.csv')
+# download.file('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv',destfile = './Data/pml-testing.csv')
+
+#Data import
+training<-read.csv('./Data/pml-training.csv')
+testing<-read.csv('./Data/pml-testing.csv')
+
+
+
+```
+
+
+## Instructions
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+# Data Cleanup
+The first seven columns are unneeded for the modeling and were removed. Then were removed summary columns as they are not needed for modeling either.
+
+Revised datasets:
+
+```{r wrangle}
+training2<-training[,-c(1:7)]
+training2<-training2 %>% 
+  select(
+    -grep('kurtosis',names(training2)),
+    -grep('avg',names(training2)),
+    -grep('var',names(training2)),
+    -grep('stddev',names(training2)),
+    -grep('min',names(training2)),
+    -grep('max',names(training2)),
+    -grep('skewness',names(training2)),
+    -grep('amplitude',names(training2))
+    #-grep('total',names(training2))
+  )
+
+testing2<-testing[,-c(1:7)]
+testing2<-testing2 %>% 
+  select(
+    -grep('kurtosis',names(testing2)),
+    -grep('avg',names(testing2)),
+    -grep('var',names(testing2)),
+    -grep('stddev',names(testing2)),
+    -grep('min',names(testing2)),
+    -grep('max',names(testing2)),
+    -grep('skewness',names(testing2)),
+    -grep('amplitude',names(testing2))
+    #-grep('total',names(training2))
+  )
+
+dim(training2)
+dim(testing2)
+
+```
+
+
+# Modeling
+Build model to predict 'classe' variable form other variables. 'classe' is a measure of the manner in which the exercise was done.
+
+* A - exactly according to the specification
+* B - throwing the elbows to the front
+* C - lifting the dumbbell only halfway
+* D - lowering the dumbbell only halfway
+* E - throwing the hips to the front
+
+## Training
+A subset of the training data was created to test on to leave the test data untouched.
+
+```{r quiz}
+set.seed(42)
+
+inTrain<-createDataPartition(y=training2$classe,p=0.7,list=FALSE)
+training3<-training2[inTrain,]
+testing3<-training2[-inTrain,]
+
+```
+
+### Random Forest Model Training
+
+```{r rf}
+
+#Use train control for cross validation built in caret
+modFit<-train(classe ~ ., method = 'rf', data = training3, trControl = trainControl(method = 'cv', number =3))
+modFit
+modFit$finalModel
+
+
+```
+
+
+## Testing on Verification Partition
+
+```{r test verification}
+pred<-predict(modFit,testing3)
+confusionMatrix(table(pred,testing3$classe))
+
+
+```
+
+Accuracy is approximately 99.34%.
+
+# Final Test
+Now use the model to predict on the original testing set.
+
+```{r final}
+predfinal <- predict(modFit, testing)
+predfinal
+
+```
+
+
+
+# References
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013. [http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har#weight_lifting_exercises]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
